@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PackageId>CoffeeTrove</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Arnaud Leroy</Authors>
+    <Description>Access 440K+ cafes, brewing guides, and coffee data from CoffeeTrove.</Description>
+    <PackageProjectUrl>https://coffeetrove.com</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/arnaudleroy-studio/coffeetrove-dotnet</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>coffee cafes data</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>
