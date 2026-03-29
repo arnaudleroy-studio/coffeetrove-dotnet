@@ -1,6 +1,6 @@
-# CoffeeTrove .NET Client
+# CoffeeTrove .NET
 
-Official .NET library for [CoffeeTrove](https://coffeetrove.com) -- the world's largest open coffee database with 440,000+ cafes worldwide, brewing guides, bean profiles, and origin data.
+Cafe modeling, Golden Drop scoring, brew ratio calculation, and coffee origin data for the [CoffeeTrove](https://coffeetrove.com) platform. CoffeeTrove maps over 440,000 cafes worldwide with quality scores, brewing guides, and bean profiles.
 
 ## Installation
 
@@ -8,144 +8,87 @@ Official .NET library for [CoffeeTrove](https://coffeetrove.com) -- the world's 
 dotnet add package CoffeeTrove
 ```
 
-Or via the NuGet Package Manager:
-
-```
-Install-Package CoffeeTrove
-```
-
 ## Quick Start
 
+Model a cafe, compute its Golden Drop score, and calculate a brew ratio:
+
 ```csharp
 using CoffeeTrove;
 
-// Platform info
-Console.WriteLine($"Platform: {Info.Organization}");
-Console.WriteLine($"Database: {Info.Description}");
+// Build a cafe with known data points
+var cafe = new Cafe(
+    Name: "Blue Bottle Coffee",
+    City: "San Francisco",
+    Country: "United States",
+    HasWebsite: true,
+    HasPhone: true,
+    HasHours: true,
+    HasPhotos: true,
+    ReviewCount: 42,
+    ChainType: ChainType.Local);
 
-// Score a cafe using the Golden Drop system
-var tier = GoldenDrop.Classify(82);
-Console.WriteLine($"Score 82 = {tier}"); // Output: "Outstanding"
+// Golden Drop score factors in data completeness + independence
+var score = GoldenDrop.Score(cafe);
+Console.WriteLine($"{cafe.Name}: {score.Total}/100 ({score.Tier})");
+// => Blue Bottle Coffee: 55/100 (Common)
 ```
 
-## Features
+## Brew Ratio Calculator
 
-### Golden Drop Scoring
-
-CoffeeTrove rates cafes using the Golden Drop scoring system, computed from data completeness, chain classification, and community signals:
+Calculate water-to-coffee ratios for any brewing method with gram-level precision:
 
 ```csharp
-using CoffeeTrove;
+var ratio = BrewRatio.Calculate(method: BrewMethod.PourOver, coffeeGrams: 20.0);
+Console.WriteLine($"{ratio.WaterMl:F0} ml water for {ratio.CoffeeGrams:F0}g coffee");
+// => 320 ml water for 20g coffee
 
-// Classify scores into tiers
-Console.WriteLine(GoldenDrop.Classify(95)); // "Exceptional"
-Console.WriteLine(GoldenDrop.Classify(75)); // "Outstanding"
-Console.WriteLine(GoldenDrop.Classify(55)); // "Notable"
-Console.WriteLine(GoldenDrop.Classify(30)); // "Common"
-
-// Get tier color for UI rendering
-var color = GoldenDrop.GetColor(92);
-Console.WriteLine(color); // "#FFD700" (gold)
+// French Press uses a coarser ratio
+var french = BrewRatio.Calculate(BrewMethod.FrenchPress, coffeeGrams: 30.0);
+Console.WriteLine($"{french.Ratio}:1 ratio => {french.WaterMl:F0} ml");
+// => 15:1 ratio => 450 ml
 ```
 
-### Chain Badge System
+## Coffee Origins
 
-Three-tier classification for cafe independence:
-
-```csharp
-using CoffeeTrove;
-
-var (label, color) = ChainBadge.GetBadge("global");
-Console.WriteLine($"{label}: {color}"); // "Global Chain: #FF9800"
-
-var indie = ChainBadge.GetBadge(null);
-Console.WriteLine($"{indie.Label}: {indie.Color}"); // "Independent: #4CAF50"
-```
-
-### Brewing Methods
-
-Access descriptions and metadata for common brewing methods:
+Enumerate major coffee-producing origins with their regions:
 
 ```csharp
-using CoffeeTrove;
-
-var desc = BrewingMethods.GetDescription("pour-over");
-Console.WriteLine(desc);
-// "Manual drip method where hot water is poured over grounds in a filter."
-
-// List all supported methods
-foreach (var (method, description) in BrewingMethods.Methods)
-    Console.WriteLine($"{method}: {description}");
-```
-
-### Brew Ratio Calculator
-
-Calculate coffee-to-water ratios for different brewing methods:
-
-```csharp
-using CoffeeTrove;
-
-// How much coffee for 300ml of pour-over?
-var grams = BrewRatio.Calculate("pour-over", 300);
-Console.WriteLine($"Coffee needed: {grams}g"); // "Coffee needed: 18g"
-
-// Espresso ratio for 40ml
-var espresso = BrewRatio.Calculate("espresso", 40);
-Console.WriteLine($"Espresso dose: {espresso}g"); // "Espresso dose: 4g"
-```
-
-### Geo Distance Calculator
-
-Find nearby cafes using Haversine distance calculation:
-
-```csharp
-using CoffeeTrove;
-
-// Distance between two points (e.g., user location to a cafe)
-double km = GeoDistance.Calculate(
-    48.8566, 2.3522,   // Paris
-    51.5074, -0.1278   // London
-);
-Console.WriteLine($"Distance: {km:F1} km"); // "Distance: 343.6 km"
-```
-
-### Cafe Model
-
-Work with cafe data from the CoffeeTrove database:
-
-```csharp
-using CoffeeTrove;
-
-var cafe = new Cafe
+foreach (var origin in Enum.GetValues<Origin>())
 {
-    Name = "Blue Bottle Coffee",
-    City = "San Francisco",
-    Score = 78,
-    ChainType = "local"
-};
-
-Console.WriteLine(cafe);              // "Blue Bottle Coffee (San Francisco) - Outstanding"
-Console.WriteLine(cafe.Tier);         // "Outstanding"
-Console.WriteLine(cafe.IsIndependent); // false
+    var info = OriginInfo.Get(origin);
+    Console.WriteLine($"{info.Country} ({info.Region}) - {info.AltitudeRange}");
+}
+// Ethiopia (Africa) - 1500-2200m
+// Colombia (South America) - 1200-2000m
+// ...
 ```
 
-## Data Coverage
+## Scoring Tiers
 
-| Category | Count |
-|----------|-------|
-| Cafes Worldwide | 440,000+ |
-| Countries Covered | 180+ |
-| Brewing Methods | 10+ guides |
-| Bean Profiles | 23+ origins |
-| Coffee Encyclopedia | 164 entries |
-| Interactive Tools | 11 calculators |
+The Golden Drop system assigns tiers based on total score:
+
+| Tier | Score Range | Description |
+|------|-------------|-------------|
+| Legendary | 90-100 | Exceptional completeness and reviews |
+| Excellent | 70-89 | Well-documented, active cafe |
+| Common | 40-69 | Basic listing with some data |
+| Sparse | 0-39 | Minimal information available |
+
+## API Surface
+
+| Type | Description |
+|------|-------------|
+| `Cafe` | Immutable record representing a cafe listing |
+| `GoldenDrop` | Scoring engine with data-completeness and independence bonuses |
+| `BrewRatio` | Water-to-coffee ratio calculator for 7 brewing methods |
+| `Origin` / `OriginInfo` | Enum and metadata for 12 coffee-producing origins |
+| `ChainType` | Global chain, local chain, or independent classification |
 
 ## Links
 
-- [CoffeeTrove Homepage](https://coffeetrove.com)
-- [Interactive Map](https://coffeetrove.com/map)
+- [CoffeeTrove](https://coffeetrove.com)
 - [Source Code](https://github.com/arnaudleroy-studio/coffeetrove-dotnet)
-- [Report Issues](https://github.com/arnaudleroy-studio/coffeetrove-dotnet/issues)
+- [NuGet Package](https://www.nuget.org/packages/CoffeeTrove)
 
 ## License
 

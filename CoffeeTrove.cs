@@ -1,198 +1,214 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
+namespace CoffeeTrove;
 
-namespace CoffeeTrove
+/// <summary>
+/// Classification of cafe ownership: global chain, local chain, or independent.
+/// Independent cafes receive a scoring bonus in the Golden Drop system.
+/// </summary>
+public enum ChainType
+{
+    /// <summary>Independent, single-location or owner-operated cafe.</summary>
+    Independent,
+    /// <summary>Regional chain with a handful of locations (e.g., Blue Bottle).</summary>
+    Local,
+    /// <summary>Global chain with hundreds of locations (e.g., Starbucks).</summary>
+    Global
+}
+
+/// <summary>
+/// Represents a cafe listing in the CoffeeTrove directory.
+/// </summary>
+public sealed record Cafe(
+    string Name,
+    string City,
+    string Country,
+    bool HasWebsite = false,
+    bool HasPhone = false,
+    bool HasHours = false,
+    bool HasPhotos = false,
+    int ReviewCount = 0,
+    ChainType ChainType = ChainType.Independent);
+
+/// <summary>
+/// Result of a Golden Drop score calculation, including component breakdown.
+/// </summary>
+public sealed record ScoreResult(
+    int DataPoints,
+    int ReviewPoints,
+    int IndependenceBonus,
+    string Tier)
+{
+    /// <summary>Total score out of 100.</summary>
+    public int Total => Math.Min(100, DataPoints + ReviewPoints + IndependenceBonus);
+}
+
+/// <summary>
+/// The Golden Drop scoring engine. Computes a quality score for a cafe based on
+/// data completeness (how much we know), review activity, and independence status.
+/// </summary>
+public static class GoldenDrop
 {
     /// <summary>
-    /// Core metadata and constants for the CoffeeTrove platform.
-    /// Homepage: https://coffeetrove.com
+    /// Computes the Golden Drop score for a cafe.
+    /// Data completeness contributes up to 55 points, reviews up to 35, and
+    /// independent cafes receive a 10-point bonus.
     /// </summary>
-    public static class Info
+    public static ScoreResult Score(Cafe cafe)
     {
-        public const string Version = "0.1.0";
-        public const string BaseUrl = "https://coffeetrove.com";
-        public const string Organization = "CoffeeTrove";
-        public const string Description = "The world's largest open coffee database with 440,000+ cafes, brewing guides, bean profiles, and origin data.";
-    }
+        // Data completeness: each field is worth up to 55 total
+        int data = 0;
+        if (cafe.HasWebsite) data += 15;
+        if (cafe.HasPhone)   data += 10;
+        if (cafe.HasHours)   data += 15;
+        if (cafe.HasPhotos)  data += 15;
 
-    /// <summary>
-    /// Golden Drop scoring system used to rate cafes on CoffeeTrove.
-    /// Scores are computed from data completeness and community signals.
-    /// </summary>
-    public static class GoldenDrop
-    {
-        /// <summary>
-        /// Score tiers with their minimum thresholds and labels.
-        /// </summary>
-        public static readonly (int MinScore, string Label, string Color)[] Tiers = new[]
+        // Review activity: logarithmic scale, max 35
+        int reviews = cafe.ReviewCount switch
         {
-            (90, "Exceptional", "#FFD700"),
-            (70, "Outstanding", "#C0C0C0"),
-            (50, "Notable", "#CD7F32"),
-            (0, "Common", "#A0A0A0")
+            0          => 0,
+            < 5        => 10,
+            < 20       => 20,
+            < 50       => 28,
+            _          => 35
         };
 
-        /// <summary>
-        /// Classifies a score into a Golden Drop tier.
-        /// </summary>
-        public static string Classify(int score)
+        // Independence bonus
+        int bonus = cafe.ChainType == ChainType.Independent ? 10 : 0;
+
+        int total = Math.Min(100, data + reviews + bonus);
+
+        string tier = total switch
         {
-            foreach (var (min, label, _) in Tiers)
-            {
-                if (score >= min) return label;
-            }
-            return "Common";
-        }
-
-        /// <summary>
-        /// Gets the color hex for a given score.
-        /// </summary>
-        public static string GetColor(int score)
-        {
-            foreach (var (min, _, color) in Tiers)
-            {
-                if (score >= min) return color;
-            }
-            return "#A0A0A0";
-        }
-    }
-
-    /// <summary>
-    /// Represents a cafe in the CoffeeTrove database.
-    /// </summary>
-    public class Cafe
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Slug { get; set; } = string.Empty;
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public string? City { get; set; }
-        public string? Country { get; set; }
-        public int Score { get; set; }
-        public string? ChainType { get; set; }
-
-        /// <summary>
-        /// Returns the Golden Drop tier label for this cafe.
-        /// </summary>
-        public string Tier => GoldenDrop.Classify(Score);
-
-        /// <summary>
-        /// Returns true if this cafe is an independent (non-chain) shop.
-        /// </summary>
-        public bool IsIndependent => string.IsNullOrEmpty(ChainType);
-
-        public override string ToString() => $"{Name} ({City ?? "Unknown"}) - {Tier}";
-    }
-
-    /// <summary>
-    /// Chain badge classification system.
-    /// Three tiers: Global Chain, Local Chain, Independent.
-    /// </summary>
-    public static class ChainBadge
-    {
-        public static readonly Dictionary<string, (string Label, string Color)> Badges = new()
-        {
-            { "global", ("Global Chain", "#FF9800") },
-            { "local", ("Local Chain", "#64B5F6") }
+            >= 90 => "Legendary",
+            >= 70 => "Excellent",
+            >= 40 => "Common",
+            _     => "Sparse"
         };
 
-        /// <summary>
-        /// Gets the badge for a chain type. Returns Independent for null/empty.
-        /// </summary>
-        public static (string Label, string Color) GetBadge(string? chainType)
-        {
-            if (string.IsNullOrEmpty(chainType))
-                return ("Independent", "#4CAF50");
-            return Badges.TryGetValue(chainType.ToLowerInvariant(), out var badge)
-                ? badge
-                : ("Independent", "#4CAF50");
-        }
+        return new ScoreResult(data, reviews, bonus, tier);
+    }
+}
+
+// ── Brew Ratio ──────────────────────────────────────────────
+
+/// <summary>
+/// Supported brewing methods, each with a characteristic water-to-coffee ratio.
+/// </summary>
+public enum BrewMethod
+{
+    Espresso,
+    PourOver,
+    FrenchPress,
+    AeroPress,
+    ColdBrew,
+    MokaPot,
+    Drip
+}
+
+/// <summary>
+/// Result of a brew ratio calculation.
+/// </summary>
+public sealed record BrewResult(
+    BrewMethod Method,
+    double CoffeeGrams,
+    double WaterMl,
+    double Ratio);
+
+/// <summary>
+/// Calculates water-to-coffee ratios for common brewing methods.
+/// Ratios follow SCA (Specialty Coffee Association) guidelines.
+/// </summary>
+public static class BrewRatio
+{
+    private static readonly Dictionary<BrewMethod, double> Ratios = new()
+    {
+        [BrewMethod.Espresso]    = 2.0,    // 1:2 espresso standard
+        [BrewMethod.PourOver]    = 16.0,   // SCA golden ratio
+        [BrewMethod.FrenchPress] = 15.0,
+        [BrewMethod.AeroPress]   = 12.0,
+        [BrewMethod.ColdBrew]    = 8.0,    // concentrate ratio
+        [BrewMethod.MokaPot]     = 10.0,
+        [BrewMethod.Drip]        = 16.5,
+    };
+
+    /// <summary>
+    /// Calculates the water needed for a given amount of coffee using the
+    /// standard ratio for the specified brewing method.
+    /// </summary>
+    public static BrewResult Calculate(BrewMethod method, double coffeeGrams)
+    {
+        var ratio = Ratios[method];
+        var water = coffeeGrams * ratio;
+        return new BrewResult(method, coffeeGrams, water, ratio);
     }
 
     /// <summary>
-    /// Brewing method definitions and metadata.
+    /// Returns the standard ratio for a brewing method.
     /// </summary>
-    public static class BrewingMethods
-    {
-        public static readonly Dictionary<string, string> Methods = new()
-        {
-            { "espresso", "High-pressure extraction using finely ground coffee, producing a concentrated shot." },
-            { "pour-over", "Manual drip method where hot water is poured over grounds in a filter." },
-            { "french-press", "Immersion brewing with a metal mesh plunger for a full-bodied cup." },
-            { "aeropress", "Pressure-based immersion method using a compact plastic brewer." },
-            { "cold-brew", "Coarse grounds steeped in cold water for 12-24 hours." },
-            { "moka-pot", "Stovetop brewer using steam pressure to push water through grounds." },
-            { "turkish", "Ultra-fine grounds simmered in a cezve with optional sugar and spices." },
-            { "chemex", "Pour-over method using a thick bonded paper filter for a clean cup." },
-            { "siphon", "Vacuum brewer using two chambers and vapor pressure for theatrical brewing." },
-            { "drip", "Automatic machine drip brewing for consistent everyday coffee." }
-        };
+    public static double GetRatio(BrewMethod method) => Ratios[method];
+}
 
-        /// <summary>
-        /// Gets the description for a brewing method, or null if not found.
-        /// </summary>
-        public static string? GetDescription(string method)
-        {
-            return Methods.TryGetValue(method.ToLowerInvariant(), out var desc) ? desc : null;
-        }
-    }
+// ── Origins ─────────────────────────────────────────────────
+
+/// <summary>
+/// Major coffee-producing origins tracked by CoffeeTrove.
+/// </summary>
+public enum Origin
+{
+    Ethiopia,
+    Colombia,
+    Brazil,
+    Guatemala,
+    Kenya,
+    CostaRica,
+    Jamaica,
+    Hawaii,
+    Sumatra,
+    Yemen,
+    Peru,
+    Vietnam
+}
+
+/// <summary>
+/// Metadata about a coffee-producing origin.
+/// </summary>
+public sealed record OriginData(
+    string Country,
+    string Region,
+    string AltitudeRange,
+    string[] FlavorNotes);
+
+/// <summary>
+/// Provides metadata for each coffee origin.
+/// </summary>
+public static class OriginInfo
+{
+    private static readonly Dictionary<Origin, OriginData> Data = new()
+    {
+        [Origin.Ethiopia]   = new("Ethiopia",   "Africa",         "1500-2200m", ["Floral", "Berry", "Citrus"]),
+        [Origin.Colombia]   = new("Colombia",   "South America",  "1200-2000m", ["Caramel", "Nutty", "Balanced"]),
+        [Origin.Brazil]     = new("Brazil",     "South America",  "800-1400m",  ["Chocolate", "Nutty", "Low Acidity"]),
+        [Origin.Guatemala]  = new("Guatemala",  "Central America","1300-1700m", ["Chocolate", "Spice", "Full Body"]),
+        [Origin.Kenya]      = new("Kenya",      "Africa",         "1400-2000m", ["Blackcurrant", "Citrus", "Wine"]),
+        [Origin.CostaRica]  = new("Costa Rica", "Central America","1200-1800m", ["Honey", "Bright", "Clean"]),
+        [Origin.Jamaica]    = new("Jamaica",    "Caribbean",      "900-1500m",  ["Mild", "Sweet", "Balanced"]),
+        [Origin.Hawaii]     = new("Hawaii",     "Pacific",        "300-900m",   ["Smooth", "Nutty", "Mild"]),
+        [Origin.Sumatra]    = new("Sumatra",    "Southeast Asia", "800-1500m",  ["Earthy", "Herbal", "Heavy Body"]),
+        [Origin.Yemen]      = new("Yemen",      "Middle East",    "1500-2500m", ["Wine", "Chocolate", "Wild Fruit"]),
+        [Origin.Peru]       = new("Peru",       "South America",  "1200-1800m", ["Floral", "Citrus", "Bright"]),
+        [Origin.Vietnam]    = new("Vietnam",    "Southeast Asia", "500-1600m",  ["Bold", "Chocolate", "Bitter"]),
+    };
 
     /// <summary>
-    /// Brew ratio calculator for different methods.
+    /// Returns metadata for a given coffee origin.
     /// </summary>
-    public static class BrewRatio
-    {
-        /// <summary>
-        /// Standard coffee-to-water ratios (grams of coffee per 100ml water).
-        /// </summary>
-        public static readonly Dictionary<string, double> Ratios = new()
-        {
-            { "espresso", 10.0 },
-            { "pour-over", 6.0 },
-            { "french-press", 7.0 },
-            { "aeropress", 6.5 },
-            { "cold-brew", 8.0 },
-            { "drip", 5.5 }
-        };
+    public static OriginData Get(Origin origin) => Data[origin];
+}
 
-        /// <summary>
-        /// Calculates coffee grams needed for a given water volume and method.
-        /// </summary>
-        /// <param name="method">Brewing method name</param>
-        /// <param name="waterMl">Water volume in milliliters</param>
-        /// <returns>Grams of coffee needed, or null if method not found</returns>
-        public static double? Calculate(string method, double waterMl)
-        {
-            if (!Ratios.TryGetValue(method.ToLowerInvariant(), out var ratio))
-                return null;
-            return Math.Round(ratio * waterMl / 100.0, 1);
-        }
-    }
-
-    /// <summary>
-    /// Distance calculator for finding nearby cafes using the Haversine formula.
-    /// </summary>
-    public static class GeoDistance
-    {
-        private const double EarthRadiusKm = 6371.0;
-
-        /// <summary>
-        /// Calculates the distance in kilometers between two geographic coordinates.
-        /// Uses the Haversine formula for accuracy on a spherical Earth.
-        /// </summary>
-        public static double Calculate(double lat1, double lon1, double lat2, double lon2)
-        {
-            var dLat = ToRadians(lat2 - lat1);
-            var dLon = ToRadians(lon2 - lon1);
-            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                    Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
-                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-            return EarthRadiusKm * c;
-        }
-
-        private static double ToRadians(double degrees) => degrees * Math.PI / 180.0;
-    }
+/// <summary>
+/// Package metadata and version information.
+/// </summary>
+public static class Info
+{
+    public const string Version = "0.1.0";
+    public const string BaseUrl = "https://coffeetrove.com";
 }

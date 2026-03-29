@@ -6,14 +6,12 @@
     <PackageId>CoffeeTrove</PackageId>
     <Version>0.1.0</Version>
     <Authors>Arnaud Leroy</Authors>
-    <Description>Official .NET client for CoffeeTrove, the world's largest open coffee database. Access 440K+ cafes worldwide, Golden Drop scoring, chain badge classification, brewing method guides, brew ratio calculator, and geo distance utilities.</Description>
+    <Description>Cafe modeling, Golden Drop scoring, brew ratio calculation, and origin data for the CoffeeTrove platform covering 440K+ cafes worldwide.</Description>
     <PackageProjectUrl>https://coffeetrove.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/arnaudleroy-studio/coffeetrove-dotnet</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>coffee;cafes;brewing;data;geolocation;scoring;barista;espresso</PackageTags>
+    <PackageTags>coffee cafes brewing golden-drop-score origins data</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <Copyright>Copyright (c) 2026 CoffeeTrove</Copyright>
   </PropertyGroup>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
