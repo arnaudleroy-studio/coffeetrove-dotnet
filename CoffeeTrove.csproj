@@ -1,15 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
     <PackageId>CoffeeTrove</PackageId>
     <Version>0.1.0</Version>
     <Authors>Arnaud Leroy</Authors>
-    <Description>Access 440K+ cafes, brewing guides, and coffee data from CoffeeTrove.</Description>
+    <Description>Official .NET client for CoffeeTrove, the world's largest open coffee database. Access 440K+ cafes worldwide, Golden Drop scoring, chain badge classification, brewing method guides, brew ratio calculator, and geo distance utilities.</Description>
     <PackageProjectUrl>https://coffeetrove.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/arnaudleroy-studio/coffeetrove-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>coffee cafes data</PackageTags>
+    <PackageTags>coffee;cafes;brewing;data;geolocation;scoring;barista;espresso</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Copyright>Copyright (c) 2026 CoffeeTrove</Copyright>
   </PropertyGroup>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
